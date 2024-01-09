@@ -76,12 +76,12 @@ def handle_client_request(resource, client_socket):
     try:
         if content_type.startswith("text/"):
             with open(uri, 'r') as f:
-                data = f.read()
+                data = f.read().encode()
         else:  # Assume binary content
             with open(uri, 'rb') as f:
                 data = f.read()
 
-        http_header = f"HTTP/1.1 200 OK\r\nContent-Type: {content_type}\r\n\r\n"
+        http_header = f"HTTP/1.1 200 OK\r\nContent-Type: {content_type}\r\nContent-Length: {len(data)}\r\n\r\n"
     except FileNotFoundError:
         http_header = f"HTTP/1.1 404 Not Found\r\n\r\n"
         data = f"File '{uri}' not found."
