@@ -53,15 +53,15 @@ def handle_client_request(resource, client_socket):
     else:
         uri = resource
 
-    # Check for redirections
+    # Check for redirections (unchanged)
     if uri in REDIRECTION_DICTIONARY:
         target_url = REDIRECTION_DICTIONARY[uri]
         http_header = f"HTTP/1.1 302 Found\r\nLocation: {target_url}\r\n\r\n"
         client_socket.send(http_header.encode())
         return
 
-    # Determine content type and handle file retrieval
-    file_extension = os.path.splitext(uri)[1].lower()  # Extract file extension
+    # Determine content type and handle file retrieval (optimized)
+    file_extension = os.path.splitext(uri)[1].lower()
     content_type = {
         '.html': "text/html;charset=utf-8",
         '.jpg': "image/jpeg",
@@ -73,34 +73,21 @@ def handle_client_request(resource, client_socket):
         '.png': "image/png",
     }.get(file_extension)
 
-    # Handle status codes
-    if content_type == "text/html":
-        try:
+    try:
+        if content_type.startswith("text/"):
             with open(uri, 'r') as f:
                 data = f.read()
-            http_header = f"HTTP/1.1 200 OK\r\nContent-Type: {content_type}\r\n\r\n"
-        except FileNotFoundError:
-            http_header = f"HTTP/1.1 404 Not Found\r\n\r\n"
-            data = f"File '{uri}' not found."
-    elif content_type == "image/jpeg":
-        try:
+        else:  # Assume binary content
             with open(uri, 'rb') as f:
                 data = f.read()
-            http_header = f"HTTP/1.1 200 OK\r\nContent-Type: {content_type}\r\n\r\n"
-        except FileNotFoundError:
-            http_header = f"HTTP/1.1 404 Not Found\r\n\r\n"
-            data = f"File '{uri}' not found."
-    elif content_type == "image/png":
-        try:
-            with open(uri, 'rb') as f:
-                data = f.read()
-            http_header = f"HTTP/1.1 200 OK\r\nContent-Type: {content_type}\r\n\r\n"
-        except FileNotFoundError:
-            http_header = f"HTTP/1.1 404 Not Found\r\n\r\n"
-            data = f"File '{uri}' not found."
-    else:
+
+        http_header = f"HTTP/1.1 200 OK\r\nContent-Type: {content_type}\r\n\r\n"
+    except FileNotFoundError:
         http_header = f"HTTP/1.1 404 Not Found\r\n\r\n"
-        data = "Unsupported file type."
+        data = f"File '{uri}' not found."
+    except Exception as e:
+        http_header = f"HTTP/1.1 500 Internal Server Error\r\n\r\n"
+        data = f"An error occurred: {str(e)}"
 
     # Send response
     http_response = http_header + data
