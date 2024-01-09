@@ -84,37 +84,33 @@ def handle_client_request(resource, client_socket):
         http_header = f"HTTP/1.1 200 OK\r\nContent-Type: {content_type}\r\nContent-Length: {len(data)}\r\n\r\n"
     except FileNotFoundError:
         http_header = f"HTTP/1.1 404 Not Found\r\n\r\n"
-        data = f"File '{uri}' not found."
+        data = b''
     except Exception as e:
         http_header = f"HTTP/1.1 500 Internal Server Error\r\n\r\n"
-        data = f"An error occurred: {str(e)}"
+        data = b''
 
     # Send response
-    http_response = http_header + data
+    http_response = http_header.encode() + data
     client_socket.send(http_response)
 
 
 def validate_http_request(request):
     """
-    Check if request is a valid HTTP request and returns TRUE / FALSE and
-    the requested URL
+    Check if request is a valid HTTP request and returns the URI if valid,
+    otherwise returns an empty string.
+
     :param request: the request which was received from the client
-    :return: a tuple of (True/False - depending if the request is valid,
-    the requested resource )
+    :return: the URI of the requested resource if valid, otherwise an empty string
     """
-    # Parse the request into a list of lines
+
     lines = request.splitlines()
 
-    # Check if the first line is a valid GET request
-    if lines[0].strip() != "GET ":
-        return False, "400 Bad Request"
+    # Check for valid GET request and HTTP version
+    if lines[0].strip() != "GET " or lines[1].strip() != "HTTP/1.1":
+        return ""
 
-    # Check if the second line is a valid HTTP version
-    if lines[1].strip() != "HTTP/1.1":
-        return False, "400 Bad Request"
-
-    # The request is valid, so return the requested resource
-    return True, lines[2].strip()
+    # Extract and return the URI if valid
+    return lines[2].strip()
 
 
 def handle_client(client_socket):
@@ -143,6 +139,7 @@ def handle_client(client_socket):
 
             # Validate the HTTP request
             valid_http, resource = validate_http_request(client_request.decode())
+            print(resource + "")
             if valid_http:
                 print('Got a valid HTTP request')
                 handle_client_request(resource, client_socket)
