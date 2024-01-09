@@ -103,14 +103,11 @@ def validate_http_request(request):
     :return: the URI of the requested resource if valid, otherwise an empty string
     """
 
-    lines = request.splitlines()
-
-    # Check for valid GET request and HTTP version
-    if lines[0].strip() != "GET " or lines[1].strip() != "HTTP/1.1":
-        return ""
-
-    # Extract and return the URI if valid
-    return lines[2].strip()
+    lines = request[0].split(' ')
+    if len(lines) != 3 or lines[2] != "HTTP/1.1" or lines[0] != "GET":
+        return False, " "
+    else:
+        return True, lines[1]
 
 
 def handle_client(client_socket):
@@ -139,7 +136,7 @@ def handle_client(client_socket):
 
             # Validate the HTTP request
             valid_http, resource = validate_http_request(client_request.decode())
-            print(resource + "")
+            print(resource)
             if valid_http:
                 print('Got a valid HTTP request')
                 handle_client_request(resource, client_socket)
