@@ -1,11 +1,9 @@
 """
  HTTP Server Shell
- Author: Barak Gonen and Nir Dweck
- Purpose: Provide a basis for Ex. 4
- Note: The code is written in a simple way, without classes, log files or
- other utilities, for educational purpose
- Usage: Fill the missing functions and constants
+ Author: lia yosef
+ Purpose:  Ex. 4
 """
+import logging
 import socket
 import os
 
@@ -15,11 +13,29 @@ QUEUE_SIZE = 10
 IP = '127.0.0.1'
 PORT = 80
 SOCKET_TIMEOUT = 2
-DEFAULT_URL = r"C:\webroot\index.html"
-WEB_ROOT = r"C:\webroot"
+MAX_PACKET = 1024
+DEFAULT_URL = r"/index.html"
+WEB_ROOT = r"C:/users/user/Onedrive/Desktop/cyber/4.0/webroot"
+REDIRECT_LOC = "/"
+HTTP_VERSION = "HTTP/1.1"
 REDIRECTION_DICTIONARY = {
-    302: "302 MOVED TEMPORARILY", 400: "400 BAD REQUEST", 403: "403 FORBIDDEN",
-    404: "404 NOT FOUND", 500: "500 INTERNAL SERVER ERROR"
+    "/moved": f"302 MOVED TEMPORARILY\r\nlocation: {REDIRECT_LOC}\r\n", "/forbidden": "403 FORBIDDEN\r\n",
+    "/error": "500 INTERNAL SERVER ERROR\r\n"
+}
+
+NOT_FOUND = "404 NOT FOUND\r\n"
+OK_RESPONSE = "200 OKAY\r\n"
+BAD_REQUEST = "400 BAD REQUEST\r\n"
+
+CONTENT_TYPES = {
+    '.html': "text/html;charset=utf-8",
+    '.jpg': "image/jpeg",
+    '.css': "text/css",
+    '.js': "text/javascript; charset=UTF-8",
+    '.txt': "text/plain",
+    '.ico': "image/x-icon",
+    '.gif': "image/gif",
+    '.png': "image/png",
 }
 
 
@@ -29,14 +45,17 @@ def get_file_data(file_name):
     :param file_name: the name of the file
     :return: the file data in a string
     """
+    r_data = b''
     try:
-        with open(WEB_ROOT + "\\" + file_name, 'r') as file:
+        with open(file_name, 'rb') as file:
             file_data = file.read()
-            return file_data
+            r_data = file_data
     except FileNotFoundError:
-        return f"File '{file_name}' not found."
+        logging.error(f"File '{file_name}' not found.")
     except Exception as e:
-        return f"An error occurred: {str(e)}"
+        logging.error(f"An error occurred: {str(e)}".encode())
+    finally:
+        return r_data
 
 
 def handle_client_request(resource, client_socket):
@@ -47,7 +66,8 @@ def handle_client_request(resource, client_socket):
     :param client_socket: a socket for the communication with the client
     :return: None
     """
-
+    res = ""
+    data = b''
     if resource == "/":
         uri = DEFAULT_URL
     else:
@@ -55,57 +75,49 @@ def handle_client_request(resource, client_socket):
 
     # Check for redirections (unchanged)
     if uri in REDIRECTION_DICTIONARY:
-        target_url = REDIRECTION_DICTIONARY[uri]
-        http_header = f"HTTP/1.1 302 Found\r\nLocation: {target_url}\r\n\r\n"
-        client_socket.send(http_header.encode())
-        return
+        res = HTTP_VERSION + " " + REDIRECTION_DICTIONARY[uri] + "\r\n"
+    else:
 
-    # Determine content type and handle file retrieval (optimized)
-    file_extension = os.path.splitext(uri)[1].lower()
-    content_type = {
-        '.html': "text/html;charset=utf-8",
-        '.jpg': "image/jpeg",
-        '.css': "text/css",
-        '.js': "text/javascript; charset=UTF-8",
-        '.txt': "text/plain",
-        '.ico': "image/x-icon",
-        '.gif': "image/gif",
-        '.png': "image/png",
-    }.get(file_extension)
+        # Determine content type and handle file retrieval (optimized)
 
+        data = get_file_data(WEB_ROOT + uri)
+
+        if data != b'':
+            file_extension = os.path.splitext(uri)[1].lower()
+            content_type = CONTENT_TYPES[file_extension]
+            res = HTTP_VERSION + " " + OK_RESPONSE
+            res += "Content-Type: " + content_type + "\r\n"
+            res += "Content-Length: " + str(len(data)) + "\r\n\r\n"
+            print(res)
+        else:
+            res = HTTP_VERSION + " " + NOT_FOUND + "\r\n"
+
+    return res.encode() + data
+
+
+def send(sock, msg):
+    sent = 0
     try:
-        if content_type.startswith("text/"):
-            with open(uri, 'r') as f:
-                data = f.read().encode()
-        else:  # Assume binary content
-            with open(uri, 'rb') as f:
-                data = f.read()
-
-        http_header = f"HTTP/1.1 200 OK\r\nContent-Type: {content_type}\r\nContent-Length: {len(data)}\r\n\r\n"
-    except FileNotFoundError:
-        http_header = f"HTTP/1.1 404 Not Found\r\n\r\n"
-        data = b''
-    except Exception as e:
-        http_header = f"HTTP/1.1 500 Internal Server Error\r\n\r\n"
-        data = b''
-
-    # Send response
-    http_response = http_header.encode() + data
-    client_socket.send(http_response)
+        while sent < len(msg):
+            sent += sock.send(msg[sent:])
+    except socket.error as err:
+        logging.error(f"somthing went wrong while sending data: {err}")
 
 
 def validate_http_request(request):
     """
     Check if request is a valid HTTP request and returns the URI if valid,
-    otherwise returns an empty string.
+    otherwise returns the error 400 bad request
 
     :param request: the request which was received from the client
     :return: the URI of the requested resource if valid, otherwise an empty string
     """
-
+    print(request)
+    request = request.split('\r\n')
     lines = request[0].split(' ')
-    if len(lines) != 3 or lines[2] != "HTTP/1.1" or lines[0] != "GET":
-        return False, " "
+    print(lines)
+    if len(lines) != 3 or lines[2] != "HTTP/1.1" or lines[0] != "GET" or not lines[1].startswith("/"):
+        return False, ""
     else:
         return True, lines[1]
 
@@ -125,7 +137,7 @@ def handle_client(client_socket):
             # Receive client request in chunks and combine them
             client_request = b''  # Empty byte string to store the request
             while True:
-                chunk = client_socket.recv(1024)  # Receive 1024 bytes at a time
+                chunk = client_socket.recv(MAX_PACKET)
                 if not chunk:  # Empty chunk means client closed connection
                     break
                 client_request += chunk  # Append chunk to request
@@ -139,9 +151,11 @@ def handle_client(client_socket):
             print(resource)
             if valid_http:
                 print('Got a valid HTTP request')
-                handle_client_request(resource, client_socket)
+                res = handle_client_request(resource, client_socket)
+                send(client_socket, res)
             else:
                 print('Error: Not a valid HTTP request')
+                send(client_socket, (HTTP_VERSION + " " + BAD_REQUEST + "\r\n\r\n").encode())
                 break
 
     except (ConnectionError, socket.timeout) as e:  # Handle more specific errors
