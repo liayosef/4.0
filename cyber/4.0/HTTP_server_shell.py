@@ -8,7 +8,7 @@ import socket
 import os
 
 # TO DO: set constants
-
+UPLOAD = r"C:/users/user/Onedrive/Desktop/cyber/4.0/UPLOAD"
 QUEUE_SIZE = 10
 IP = '127.0.0.1'
 PORT = 80
@@ -66,6 +66,7 @@ def calculate_next(request):
         num_value = num_parameter.split('num=')[1]
         try:
             num_value = int(num_value)
+            print(num_value)
             return str(num_value + 1)
         except ValueError:
             return BAD_REQUEST
@@ -119,7 +120,6 @@ def handle_client_request(resource, client_socket):
         uri = DEFAULT_URL
     else:
         uri = resource
-
     # Check for redirections (unchanged)
     if uri in REDIRECTION_DICTIONARY:
         res = HTTP_VERSION + " " + REDIRECTION_DICTIONARY[uri] + "\r\n"
