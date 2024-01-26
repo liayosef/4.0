@@ -39,6 +39,53 @@ CONTENT_TYPES = {
 }
 
 
+def upload(file_bytes, file_name):
+    """
+    The function gets a file's data and name and saves it to the upload folder.
+    :param file_bytes: the file's bytes.
+    :param file_name: the name of the file
+    :return: a 200OK response if the upload succeeded and a 400 BAD REQUEST otherwise.
+    """
+    try:
+        file_path = UPLOAD + '//' + file_name
+        with open(file_path, "wb") as binary_file:
+            binary_file.write(file_bytes)
+        return_value = OK_RESPONSE
+    except Exception as e:
+        logging.error("received socket exception: " + str(e))
+        return_value = BAD_REQUEST
+
+    return return_value
+
+
+def calculate_next(request):
+    query_params = request.split('?')[1] if '?' in request else ""
+    param_list = query_params.split('&')
+    num_parameter = next((param for param in param_list if param.startswith('num=')), None)
+    if num_parameter:
+        num_value = num_parameter.split('num=')[1]
+        try:
+            num_value = int(num_value)
+            return str(num_value + 1)
+        except ValueError:
+            return BAD_REQUEST
+
+
+def calculate_area(file_name):
+    start_index_height = file_name.find('height=') + len('height=')
+    end_index_height = file_name.find('&', start_index_height) if '&' in file_name else len(file_name)
+    num_value_height = file_name[start_index_height:end_index_height]
+    start_index_width = file_name.find('width=') + len('width=')
+    end_index_width = file_name.find('&', start_index_width) if '&' in file_name else len(file_name)
+    num_value_width = file_name[start_index_width:end_index_width]
+    area = (num_value_width * num_value_height)/2
+    if (num_value_width == " " or num_value_height == " " or not num_value_height.isnumeric()
+            or not num_value_width.isnumeric()):
+        return BAD_REQUEST
+    else:
+        return str(area)
+
+
 def get_file_data(file_name):
     """
     Get data from file
