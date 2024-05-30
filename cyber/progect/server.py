@@ -102,7 +102,6 @@ def server_program():
         col_choice = int(protocol.recv_protocol(active_player_socket).decode())
         # print("col " + col_choice)
 
-
         # Update game board
         row = get_next_open_row(game_board, col_choice)
         drop_piece(game_board, row, col_choice, current_player)

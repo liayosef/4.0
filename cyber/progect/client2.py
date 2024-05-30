@@ -12,6 +12,16 @@ LIGHT_PINK = (255, 128, 192)
 PURPLE = (128, 128, 255)
 DARK_BLUE = (0, 0, 160)
 DARK_PINK = (255, 0, 128)
+Server_Port = 12345
+SQUARESIZE = 80
+RADIUS = int(SQUARESIZE / 2 - 5)
+COLUMN_COUNT = 7
+ROW_COUNT = 6
+Width = COLUMN_COUNT * SQUARESIZE
+Height = (ROW_COUNT + 1) * SQUARESIZE
+Size = (Width, Height)
+Screen = pygame.display.set_mode(Size)
+
 
 def draw_board(screen, board, SQUARESIZE, RADIUS):
     height = (len(board) + 1) * SQUARESIZE
@@ -31,6 +41,7 @@ def draw_board(screen, board, SQUARESIZE, RADIUS):
                     int(c * SQUARESIZE + SQUARESIZE / 2), height - int(r * SQUARESIZE + SQUARESIZE / 2)), RADIUS)
     pygame.display.update()
 
+
 def main():
     # Connect to the server
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -48,20 +59,12 @@ def main():
         pygame.init()
 
         # Define screen size and other parameters
-        SQUARESIZE = 80
-        RADIUS = int(SQUARESIZE / 2 - 5)
-        COLUMN_COUNT = 7
-        ROW_COUNT = 6
-        width = COLUMN_COUNT * SQUARESIZE
-        height = (ROW_COUNT + 1) * SQUARESIZE
-        size = (width, height)
-        screen = pygame.display.set_mode(size)
         pygame.display.set_caption("Connect Four client2")
 
         # Load and display the opening screen
         opening_screen = pygame.image.load('start.webp')
-        opening_screen = pygame.transform.scale(opening_screen, (width, height))
-        screen.blit(opening_screen, (0, 0))
+        opening_screen = pygame.transform.scale(opening_screen, (Width, Height))
+        Screen.blit(opening_screen, (0, 0))
         pygame.display.update()
 
 
@@ -98,7 +101,7 @@ def main():
                     client_socket.sendall(protocol.send_protocol(str(col).encode('utf-8')))
 
             if game_board is not None:
-                draw_board(screen, game_board, SQUARESIZE, RADIUS)
+                draw_board(Screen, game_board, SQUARESIZE, RADIUS)
 
     except Exception as e:
         print(f"An error occurred: {e}")
