@@ -1,0 +1,91 @@
+import socket
+import pygame
+import sys
+import pickle
+import numpy as np
+
+# Define colors
+LIGHT_PINK = (255, 128, 192)
+PURPLE = (128, 128, 255)
+DARK_BLUE = (0, 0, 160)
+DARK_PINK = (255, 0, 128)
+
+def draw_board(screen, board, SQUARESIZE, RADIUS):
+    height = (len(board) + 1) * SQUARESIZE
+    for c in range(len(board[0])):
+        for r in range(len(board)):
+            pygame.draw.rect(screen, LIGHT_PINK, (c * SQUARESIZE, r * SQUARESIZE + SQUARESIZE, SQUARESIZE, SQUARESIZE))
+            pygame.draw.circle(screen, PURPLE, (
+                int(c * SQUARESIZE + SQUARESIZE / 2), int(r * SQUARESIZE + SQUARESIZE + SQUARESIZE / 2)), RADIUS)
+
+    for c in range(len(board[0])):
+        for r in range(len(board)):
+            if board[r][c] == 1:
+                pygame.draw.circle(screen, DARK_BLUE, (
+                    int(c * SQUARESIZE + SQUARESIZE / 2), height - int(r * SQUARESIZE + SQUARESIZE / 2)), RADIUS)
+            elif board[r][c] == 2:
+                pygame.draw.circle(screen, DARK_PINK, (
+                    int(c * SQUARESIZE + SQUARESIZE / 2), height - int(r * SQUARESIZE + SQUARESIZE / 2)), RADIUS)
+    pygame.display.update()
+
+def main():
+    # Connect to the server
+    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_ip = input("Enter the server IP address: ")
+    server_port = 12345  # This should match the port the server is listening on
+
+    try:
+        print(f"Connecting to server at {server_ip}:{server_port}...")
+        client_socket.connect((server_ip, server_port))
+        print("Connected to the server.")
+
+        client_socket.sendall(b"connectim")
+
+        pygame.init()
+
+        # Define screen size and other parameters
+        SQUARESIZE = 80
+        RADIUS = int(SQUARESIZE / 2 - 5)
+        COLUMN_COUNT = 7
+        ROW_COUNT = 6
+        width = COLUMN_COUNT * SQUARESIZE
+        height = (ROW_COUNT + 1) * SQUARESIZE
+        size = (width, height)
+        screen = pygame.display.set_mode(size)
+        pygame.display.set_caption("Connect Four")
+
+        # Load and display the opening screen
+        opening_screen = pygame.image.load('start.webp')
+        opening_screen = pygame.transform.scale(opening_screen, (width, height))
+        screen.blit(opening_screen, (0, 0))
+        pygame.display.update()
+
+        # Wait for the player to click the mouse to start the game
+        while pygame.event.wait().type != pygame.MOUSEBUTTONDOWN:
+            pass
+
+        # Receive game board from server
+        game_board_pickle = client_socket.recv(4096)
+        game_board = pickle.loads(game_board_pickle)
+
+        # Display the game board
+        draw_board(screen, game_board, SQUARESIZE, RADIUS)
+
+        # Main game loop
+        while True:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+
+                # Other game logic goes here...
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+    finally:
+        client_socket.close()
+
+if __name__ == "__main__":
+    main()
+
