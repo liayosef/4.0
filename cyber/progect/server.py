@@ -1,5 +1,7 @@
 import socket
 import pickle
+import time
+
 import numpy as np
 
 ROW_COUNT = 6
@@ -90,10 +92,14 @@ def server_program():
 
     while True:
         active_player_socket = connected_clients[turn]
+        # active_player_socket.sendall(b"YOUR TURN")
+        # print("sent turn to active player")
         other_player_socket = connected_clients[1 - turn]
 
         # Receive column choice from active player
         col_choice = int(active_player_socket.recv(1024).decode('utf-8'))
+        print(col_choice)
+
 
         # Update game board
         row = get_next_open_row(game_board, col_choice)
@@ -107,6 +113,7 @@ def server_program():
                 client_socket.sendall(game_board_pickle)
 
             # Send win message to winner
+            time.sleep(1)
             active_player_socket.sendall(b"win")
             other_player_socket.sendall(b"lose")
             print(f"Player {current_player} wins!")
@@ -118,6 +125,7 @@ def server_program():
                 client_socket.sendall(game_board_pickle)
 
             # Send draw message to both players
+            time.sleep(1)
             active_player_socket.sendall(b"draw")
             other_player_socket.sendall(b"draw")
             print("It's a draw!")

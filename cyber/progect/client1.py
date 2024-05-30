@@ -1,8 +1,11 @@
 import errno
+import select
 import socket
 import pygame
 import sys
 import pickle
+
+import protocol
 
 # Define colors
 LIGHT_PINK = (255, 128, 192)
@@ -39,8 +42,8 @@ def main():
         client_socket.connect((server_ip, server_port))
         print("Connected to the server.")
 
-        client_socket.sendall(b"connectim")
-        client_socket.setblocking(False)
+        client_socket.sendall(protocol.send_protocol(b"connectim"))
+        # client_socket.setblocking(False)
 
         pygame.init()
 
@@ -61,31 +64,38 @@ def main():
         screen.blit(opening_screen, (0, 0))
         pygame.display.update()
 
+
         # Wait for the player to click the mouse to start the game
         while pygame.event.wait().type != pygame.MOUSEBUTTONDOWN:
             pass
 
         # Main game loop
-        while True:
+        my_turn = False
+        game = True
+        while game:
             # Receive game board from server
-            try:
-                game_board_pickle = client_socket.recv(1024)
-                game_board = pickle.loads(game_board_pickle)
-            except socket.error as err:
-                game_board = None
-                if err.errno != errno.EAGAIN and err.errno != errno.EWOULDBLOCK:
-                    print(f"An error occurred: {err}")
+            rlist, _, _ = select.select([client_socket], [client_socket], [client_socket])
+            if len(rlist) > 0:
+                print("got data")
+                data = protocol.recv_protocol(1024)
+                print(data)
+                if data == b'win' or data == b'lose' or data == b'draw':
+                    game = False
+                else:
+                    my_turn = not my_turn
+                    print(my_turn)
+                    game_board = pickle.loads(data)
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     sys.exit()
 
-                if event.type == pygame.MOUSEBUTTONDOWN:
+                if event.type == pygame.MOUSEBUTTONDOWN and my_turn:
                     x = event.pos[0]
                     col = int(x // SQUARESIZE)
 
-                    client_socket.sendall(str(col).encode('utf-8'))
+                    client_socket.sendall(protocol.send_protocol(str(col).encode('utf-8')))
 
             if game_board is not None:
                 draw_board(screen, game_board, SQUARESIZE, RADIUS)
