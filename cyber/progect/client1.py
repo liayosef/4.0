@@ -1,8 +1,8 @@
+import errno
 import socket
 import pygame
 import sys
 import pickle
-import numpy as np
 
 # Define colors
 LIGHT_PINK = (255, 128, 192)
@@ -40,6 +40,7 @@ def main():
         print("Connected to the server.")
 
         client_socket.sendall(b"connectim")
+        client_socket.setblocking(False)
 
         pygame.init()
 
@@ -52,7 +53,7 @@ def main():
         height = (ROW_COUNT + 1) * SQUARESIZE
         size = (width, height)
         screen = pygame.display.set_mode(size)
-        pygame.display.set_caption("Connect Four")
+        pygame.display.set_caption("Connect Four client1")
 
         # Load and display the opening screen
         opening_screen = pygame.image.load('start.webp')
@@ -64,28 +65,35 @@ def main():
         while pygame.event.wait().type != pygame.MOUSEBUTTONDOWN:
             pass
 
-        # Receive game board from server
-        game_board_pickle = client_socket.recv(4096)
-        game_board = pickle.loads(game_board_pickle)
-
-        # Display the game board
-        draw_board(screen, game_board, SQUARESIZE, RADIUS)
-
         # Main game loop
         while True:
+            # Receive game board from server
+            try:
+                game_board_pickle = client_socket.recv(1024)
+                game_board = pickle.loads(game_board_pickle)
+            except socket.error as err:
+                game_board = None
+                if err.errno != errno.EAGAIN and err.errno != errno.EWOULDBLOCK:
+                    print(f"An error occurred: {err}")
+
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     sys.exit()
 
-                # Other game logic goes here...
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    x = event.pos[0]
+                    col = int(x // SQUARESIZE)
+
+                    client_socket.sendall(str(col).encode('utf-8'))
+
+            if game_board is not None:
+                draw_board(screen, game_board, SQUARESIZE, RADIUS)
 
     except Exception as e:
         print(f"An error occurred: {e}")
-
-    finally:
         client_socket.close()
+
 
 if __name__ == "__main__":
     main()
-
