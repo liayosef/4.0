@@ -4,6 +4,8 @@ import time
 
 import numpy as np
 
+import protocol
+
 ROW_COUNT = 6
 COLUMN_COUNT = 7
 
@@ -72,7 +74,7 @@ def server_program():
         client_socket, client_address = server_socket.accept()
         print(f"Accepted new connection from {client_address}")
 
-        message = client_socket.recv(1024).decode('utf-8')
+        message = protocol.recv_protocol(client_socket).decode()
         if message.strip() == "connectim":
             connected_clients.append(client_socket)
             print(f"Client {client_address} connected")
@@ -86,7 +88,7 @@ def server_program():
     current_player = 1  # Initialize current player (1 or 2)
 
     for client_socket in connected_clients:
-        client_socket.sendall(game_board_pickle)
+        client_socket.sendall(protocol.send_protocol(game_board_pickle))
 
     print("Game data sent. Waiting for client actions.")
 
@@ -97,8 +99,8 @@ def server_program():
         other_player_socket = connected_clients[1 - turn]
 
         # Receive column choice from active player
-        col_choice = int(active_player_socket.recv(1024).decode('utf-8'))
-        print(col_choice)
+        col_choice = int(protocol.recv_protocol(active_player_socket).decode())
+        # print("col " + col_choice)
 
 
         # Update game board
@@ -110,31 +112,29 @@ def server_program():
             # Send updated game board to both clients
             game_board_pickle = pickle.dumps(game_board)
             for client_socket in connected_clients:
-                client_socket.sendall(game_board_pickle)
+                client_socket.sendall(protocol.send_protocol(game_board_pickle))
 
             # Send win message to winner
-            time.sleep(1)
-            active_player_socket.sendall(b"win")
-            other_player_socket.sendall(b"lose")
+            active_player_socket.sendall(protocol.send_protocol(b"win"))
+            other_player_socket.sendall(protocol.send_protocol(b"lose"))
             print(f"Player {current_player} wins!")
             break
         elif is_board_full(game_board):
             # Send updated game board to both clients
             game_board_pickle = pickle.dumps(game_board)
             for client_socket in connected_clients:
-                client_socket.sendall(game_board_pickle)
+                client_socket.sendall(protocol.send_protocol(game_board_pickle))
 
             # Send draw message to both players
-            time.sleep(1)
-            active_player_socket.sendall(b"draw")
-            other_player_socket.sendall(b"draw")
+            active_player_socket.sendall(protocol.send_protocol(b"draw"))
+            other_player_socket.sendall(protocol.send_protocol(b"draw"))
             print("It's a draw!")
             break
         else:
             # Send updated game board to both clients
             game_board_pickle = pickle.dumps(game_board)
             for client_socket in connected_clients:
-                client_socket.sendall(game_board_pickle)
+                client_socket.sendall(protocol.send_protocol(game_board_pickle))
 
             # Switch turns
             turn = 1 - turn

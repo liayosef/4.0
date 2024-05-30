@@ -12,7 +12,7 @@ def send_protocol(message):
     :param message: the message
     :return: the message with her lenght
     """
-    length = str(len(message))
+    length = str(len(message)).encode()
     message1 = length.zfill(10)
     message = message1 + message
     return message
@@ -24,17 +24,23 @@ def recv_protocol(socket1):
     :param socket:the socket contaninig the full message
     :return:the messag without her lenght
     """
-    length = ""
-    message = ""
+    length = b""
+    message = b""
     try:
         while len(length) < 10:
-            length += socket1.recv(1).decode()
+
+            buf = socket1.recv(1)
+            if buf == b'':
+                length = b''
+                break
+            length += buf
             print(length)
         print(f"msg length: {length}")
-        while len(message) < int(length):
-            message += socket1.recv(int(length) - len(message)).decode()
-        print(f"msg is: {message}")
+        length = length.decode()
+        while length != '' and len(message) < int(length):
+            message += socket1.recv(int(length) - len(message))
     except socket.error as err:
-        print("in recv: " + err)
-        message = "error"
+        message = b"error"
+
+    print(type(message))
     return message

@@ -5,6 +5,8 @@ import pygame
 import sys
 import pickle
 
+import protocol
+
 # Define colors
 LIGHT_PINK = (255, 128, 192)
 PURPLE = (128, 128, 255)
@@ -40,7 +42,7 @@ def main():
         client_socket.connect((server_ip, server_port))
         print("Connected to the server.")
 
-        client_socket.sendall(b"connectim")
+        client_socket.sendall(protocol.send_protocol(b"connectim"))
         # client_socket.setblocking(False)
 
         pygame.init()
@@ -75,7 +77,7 @@ def main():
             rlist, _, _ = select.select([client_socket], [client_socket], [client_socket])
             if len(rlist) > 0:
                 print("got data")
-                data = client_socket.recv(1024)
+                data = protocol.recv_protocol(client_socket)
                 print(data)
                 if data == b'win' or data == b'lose' or data == b'draw':
                     game = False
@@ -93,7 +95,7 @@ def main():
                     x = event.pos[0]
                     col = int(x // SQUARESIZE)
 
-                    client_socket.sendall(str(col).encode('utf-8'))
+                    client_socket.sendall(protocol.send_protocol(str(col).encode('utf-8')))
 
             if game_board is not None:
                 draw_board(screen, game_board, SQUARESIZE, RADIUS)

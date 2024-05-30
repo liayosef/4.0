@@ -77,7 +77,7 @@ def main():
             rlist, _, _ = select.select([client_socket], [client_socket], [client_socket])
             if len(rlist) > 0:
                 print("got data")
-                data = protocol.recv_protocol(1024)
+                data = protocol.recv_protocol(client_socket)
                 print(data)
                 if data == b'win' or data == b'lose' or data == b'draw':
                     game = False
