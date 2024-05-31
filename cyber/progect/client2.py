@@ -46,11 +46,11 @@ def main():
     # Connect to the server
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_ip = input("Enter the server IP address: ")
-    server_port = 12345  # This should match the port the server is listening on
+    # This should match the port the server is listening on
 
     try:
-        print(f"Connecting to server at {server_ip}:{server_port}...")
-        client_socket.connect((server_ip, server_port))
+        print(f"Connecting to server at {server_ip}:{Server_Port}...")
+        client_socket.connect((server_ip, Server_Port))
         print("Connected to the server.")
 
         client_socket.sendall(protocol.send_protocol(b"connectim"))
