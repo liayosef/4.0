@@ -1,3 +1,8 @@
+"""
+athor: lia yosef
+date:31/5/2024
+name: four by four
+"""
 import errno
 import select
 import socket
@@ -23,6 +28,15 @@ Size = (Width, Height)
 Screen = pygame.display.set_mode(Size)
 
 def draw_board(screen, board, SQUARESIZE, RADIUS):
+    """
+       Draw the Connect Four board using Pygame.
+
+       Args:
+           screen (pygame.Surface): The Pygame surface where the board will be drawn.
+           board (np.ndarray): The game board matrix.
+           SQUARESIZE (int): The size of each square in the board.
+           RADIUS (int): The radius of the circles representing the pieces.
+       """
     height = (len(board) + 1) * SQUARESIZE
     for c in range(len(board[0])):
         for r in range(len(board)):

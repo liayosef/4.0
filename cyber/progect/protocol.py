@@ -1,7 +1,7 @@
 """
-Author:lia yosef
-Date:14.12.23
-program name: 2.7
+athor: lia yosef
+date:31/5/2024
+name: four by four
 """
 import socket
 

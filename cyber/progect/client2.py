@@ -1,3 +1,8 @@
+"""
+athor: lia yosef
+date:31/5/2024
+name: four by four
+"""
 import errno
 import select
 import socket
@@ -24,6 +29,15 @@ Screen = pygame.display.set_mode(Size)
 
 
 def draw_board(screen, board, SQUARESIZE, RADIUS):
+    """
+       Draw the Connect Four board using Pygame.
+
+       Args:
+           screen (pygame.Surface): The Pygame surface where the board will be drawn.
+           board (np.ndarray): The game board matrix.
+           SQUARESIZE (int): The size of each square in the board.
+           RADIUS (int): The radius of the circles representing the pieces.
+       """
     height = (len(board) + 1) * SQUARESIZE
     for c in range(len(board[0])):
         for r in range(len(board)):
@@ -46,11 +60,11 @@ def main():
     # Connect to the server
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_ip = input("Enter the server IP address: ")
-    # This should match the port the server is listening on
+    server_port = 12345  # This should match the port the server is listening on
 
     try:
-        print(f"Connecting to server at {server_ip}:{Server_Port}...")
-        client_socket.connect((server_ip, Server_Port))
+        print(f"Connecting to server at {server_ip}:{server_port}...")
+        client_socket.connect((server_ip, server_port))
         print("Connected to the server.")
 
         client_socket.sendall(protocol.send_protocol(b"connectim"))
