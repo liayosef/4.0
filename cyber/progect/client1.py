@@ -27,6 +27,7 @@ Height = (ROW_COUNT + 1) * SQUARESIZE
 Size = (Width, Height)
 Screen = pygame.display.set_mode(Size)
 
+
 def draw_board(screen, board, SQUARESIZE, RADIUS):
     """
        Draw the Connect Four board using Pygame.
