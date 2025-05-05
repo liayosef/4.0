@@ -36,6 +36,7 @@ class Protocol:
     def send_message(sock, message_type, data=None):
         """שליחת הודעה דרך socket"""
         try:
+
             message = Protocol.create_message(message_type, data)
             sock.send(message)
             return True
