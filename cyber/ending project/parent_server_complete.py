@@ -3,7 +3,6 @@ import socketserver
 import json
 import socket
 import threading
-import os
 import time
 from urllib.parse import parse_qs, urlparse, quote, unquote
 from protocol import Protocol, COMMUNICATION_PORT
@@ -327,11 +326,11 @@ class ParentServer:
                 children_data.update(data)
                 print(f"[*] נטענו נתונים עבור {len(children_data)} ילדים")
         except FileNotFoundError:
-            children_data['ילד 1'] = {"blocked_domains": set(["facebook.com", "youtube.com"]), "client_address": None,
+            children_data['ילד 1'] = {"blocked_domains": {"facebook.com", "youtube.com"}, "client_address": None,
                                       "last_seen": None}
-            children_data['ילד 2'] = {"blocked_domains": set(["instagram.com", "tiktok.com"]), "client_address": None,
+            children_data['ילד 2'] = {"blocked_domains": {"instagram.com", "tiktok.com"}, "client_address": None,
                                       "last_seen": None}
-            children_data['ילד 3'] = {"blocked_domains": set(["twitter.com"]), "client_address": None,
+            children_data['ילד 3'] = {"blocked_domains": {"twitter.com"}, "client_address": None,
                                       "last_seen": None}
             self.save_children_data()
             print(f"[*] נוצרו נתוני ברירת מחדל עבור {len(children_data)} ילדים")
@@ -443,8 +442,10 @@ parent_server = ParentServer()
 
 
 class ParentHandler(http.server.SimpleHTTPRequestHandler):
+    # תיקון רק לפונקציה notify_child_immediate במחלקת ParentHandler
+
     def notify_child_immediate(self, child_name):
-        """עדכון מיידי לילד"""
+        """עדכון מיידי לילד - גרסה משופרת ומהירה"""
         with data_lock:
             if child_name in active_connections:
                 conn_info = active_connections[child_name]
@@ -452,10 +453,24 @@ class ParentHandler(http.server.SimpleHTTPRequestHandler):
                     try:
                         socket = conn_info["socket"]
                         domains = list(children_data[child_name]['blocked_domains'])
+
+                        # שליחת העדכון - ללא המתנה לאישור
                         Protocol.send_message(socket, Protocol.UPDATE_DOMAINS, {"domains": domains})
                         print(f"[*] נשלח עדכון מיידי ל-{child_name}")
+
+                        # שליחה שנייה מיד לאחר הראשונה - להגדלת הסיכוי שיעבור
+                        try:
+                            time.sleep(0.1)  # המתנה קצרה בין שליחות
+                            Protocol.send_message(socket, Protocol.UPDATE_DOMAINS, {"domains": domains})
+                            print(f"[*] נשלח עדכון חוזר ל-{child_name}")
+                        except:
+                            pass  # אם הפעם השנייה נכשלה, לא נדווח על זה
+
+                        return True
                     except Exception as e:
                         print(f"[!] שגיאה בעדכון {child_name}: {e}")
+                        return False
+        return False
 
     def do_GET(self):
         path = unquote(self.path)
@@ -536,6 +551,11 @@ class ParentHandler(http.server.SimpleHTTPRequestHandler):
             self.send_header('Location', '/dashboard')
             self.end_headers()
 
+        if self.path == '/login':
+            self.send_response(302)
+            self.send_header('Location', '/dashboard')
+            self.end_headers()
+
         elif self.path == '/add_domain':
             child_name = post_params.get('child', [''])[0]
             domain = post_params.get('domain', [''])[0].strip()
@@ -574,6 +594,37 @@ class ParentHandler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
 
 
+
+        # תיקון לפונקציית הוספת דומיין בלי בדיקת אימות
+        # החלף את חלק הקוד שמטפל בבקשת /add_domain:
+
+        elif self.path == '/add_domain':
+            child_name = post_params.get('child', [''])[0]
+            domain = post_params.get('domain', [''])[0].strip()
+
+            print(f"[*] התקבלה בקשה להוסיף את הדומיין '{domain}' לילד '{child_name}'")
+
+            if child_name and domain and child_name in children_data:
+                with data_lock:
+                    # וידוא שהדומיין לא כבר קיים
+                    if domain not in children_data[child_name]['blocked_domains']:
+                        children_data[child_name]['blocked_domains'].add(domain)
+                        parent_server.save_children_data()
+                        print(f"[+] נוסף דומיין {domain} עבור {child_name}")
+
+                        # הצגת רשימה מעודכנת לבדיקה
+                        print(
+                            f"[*] רשימת דומיינים חסומים עדכנית ל-{child_name}: {list(children_data[child_name]['blocked_domains'])}")
+
+                        # עדכון מיידי לילד!
+                        self.notify_child_immediate(child_name)
+                    else:
+                        print(f"[!] הדומיין {domain} כבר קיים ברשימה של {child_name}")
+
+            encoded_child_name = quote(child_name)
+            self.send_response(302)
+            self.send_header('Location', f'/dashboard?child={encoded_child_name}')
+            self.end_headers()
 if __name__ == "__main__":
     try:
         parent_server.start_communication_server()

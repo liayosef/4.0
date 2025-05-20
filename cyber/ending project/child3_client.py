@@ -25,6 +25,7 @@ BLOCKED_DOMAINS = set()
 
 class ChildClient:
     def __init__(self):
+        self.sock = None
         self.child_name = CHILD_NAME
         self.connected = False
         self.keep_running = True
