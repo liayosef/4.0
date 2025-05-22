@@ -1431,5 +1431,6 @@ if __name__ == "__main__":
                 print("\n[*] עצירת השרת...")
                 parent_server.shutdown()
                 httpd.shutdown()
+
     except Exception as e:
         print(f"[!] שגיאה בהפעלת השרת: {e}")
