@@ -639,6 +639,7 @@ if __name__ == "__main__":
     # המתנה קצרה לחיבור
     time.sleep(2)
 
+
     # הפעלת שרת דף חסימה
     block_server_thread = threading.Thread(target=start_block_server)
     block_server_thread.daemon = True

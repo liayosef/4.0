@@ -575,6 +575,7 @@ DASHBOARD_TEMPLATE = """<!DOCTYPE html>
     </div>
 </body>
 </html>"""
+
 MANAGE_CHILDREN_TEMPLATE = """<!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
@@ -793,7 +794,7 @@ class ParentServer:
 
     def load_children_data(self):
         try:
-            with open('children_data.json', 'r') as f:
+            with open('children_data.json', 'r', encoding='utf-8') as f:
                 data = json.load(f)
                 for child, info in data.items():
                     info['blocked_domains'] = set(info['blocked_domains'])
@@ -811,33 +812,66 @@ class ParentServer:
             self.save_children_data()
             print(f"[*] נוצרו נתוני ברירת מחדל עבור {len(children_data)} ילדים")
 
+    def add_child(self, child_name):
+        """הוספת ילד חדש"""
+        print(f"[DEBUG] 🔹 מנסה להוסיף ילד: '{child_name}'")
+
+        if not child_name or not child_name.strip():
+            print("[DEBUG] ❌ שם ילד ריק")
+            return False
+
+        child_name = child_name.strip()
+
+        with data_lock:
+            if child_name in children_data:
+                print(f"[DEBUG] ❌ ילד '{child_name}' כבר קיים")
+                return False
+
+            # הוספת הילד עם נתונים בסיסיים
+            children_data[child_name] = {
+                "blocked_domains": set(),  # רשימה ריקה של דומיינים חסומים
+                "client_address": None,
+                "last_seen": None
+            }
+
+            print(f"[DEBUG] ✅ ילד '{child_name}' נוסף למילון")
+            print(f"[DEBUG] כעת יש {len(children_data)} ילדים")
+
+            try:
+                self.save_children_data()
+                print(f"[+] ✅ ילד '{child_name}' נוסף בהצלחה ונשמר")
+                return True
+            except Exception as e:
+                print(f"[!] ❌ שגיאה בשמירת ילד חדש: {e}")
+                # הסרת הילד מהזיכרון אם השמירה נכשלה
+                del children_data[child_name]
+                return False
 
     def save_children_data(self):
         """שמירת נתוני ילדים - גרסה בטוחה"""
         try:
-            with data_lock:
-                data_to_save = {}
-                for child, info in children_data.items():
-                    # המרה של set ל-list אם צריך
-                    blocked_domains = info["blocked_domains"]
-                    if isinstance(blocked_domains, set):
-                        blocked_domains = list(blocked_domains)
+            data_to_save = {}
+            for child, info in children_data.items():
+                # המרה של set ל-list אם צריך
+                blocked_domains = info["blocked_domains"]
+                if isinstance(blocked_domains, set):
+                    blocked_domains = list(blocked_domains)
 
-                    data_to_save[child] = {
-                        "blocked_domains": blocked_domains,
-                        "last_seen": info.get("last_seen")
-                    }
+                data_to_save[child] = {
+                    "blocked_domains": blocked_domains,
+                    "last_seen": info.get("last_seen")
+                }
 
-                with open('children_data.json', 'w', encoding='utf-8') as f:
-                    json.dump(data_to_save, f, ensure_ascii=False, indent=2)
+            with open('children_data.json', 'w', encoding='utf-8') as f:
+                json.dump(data_to_save, f, ensure_ascii=False, indent=2)
 
-                print("[DEBUG] ✅ נתונים נשמרו בהצלחה")
+            print("[DEBUG] ✅ נתונים נשמרו בהצלחה")
 
         except Exception as e:
             print(f"[!] ❌ שגיאה בשמירת נתונים: {e}")
             import traceback
             traceback.print_exc()
-            # אל תעצור את התוכנית - רק תדווח על השגיאה
+            raise  # העלאת השגיאה כדי שהקורא יוכל לטפל בה
 
     def remove_child(self, child_name):
         """הסרת ילד עם דיבוג"""
@@ -958,6 +992,7 @@ class ParentServer:
         self.running = False
         if self.server_socket:
             self.server_socket.close()
+
 
 print("[*] ParentServer אותחל עם פונקציות ניהול ילדים")
 
@@ -1100,6 +1135,7 @@ class ParentHandler(http.server.SimpleHTTPRequestHandler):
             self.send_header('Content-type', 'text/html; charset=utf-8')
             self.end_headers()
             self.wfile.write(dashboard_html.encode('utf-8'))
+
         elif parsed_path.path == '/manage_children':
             # בדיקה אם המשתמש מחובר
             logged_in_user = self.is_logged_in()
@@ -1160,6 +1196,7 @@ class ParentHandler(http.server.SimpleHTTPRequestHandler):
         post_params = parse_qs(post_data.decode('utf-8'))
 
         print(f"[DEBUG] פרמטרים שהתקבלו: {post_params}")
+
         if self.path == '/register':
             # קבלת נתוני הטופס
             fullname = post_params.get('fullname', [''])[0].strip()
@@ -1279,6 +1316,7 @@ class ParentHandler(http.server.SimpleHTTPRequestHandler):
             self.send_response(302)
             self.send_header('Location', f'/dashboard?child={encoded_child_name}')
             self.end_headers()
+
         elif self.path == '/add_child':
             print("[DEBUG] 🔹 נכנסתי לטיפול בהוספת ילד")
 
@@ -1366,10 +1404,9 @@ class ParentHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_header('Content-type', 'text/html')
                 self.end_headers()
                 self.wfile.write(b'<h1>Server Error</h1>')
-            else:
-                self.send_response(302)
-                self.send_header('Location', '/manage_children')
-                self.end_headers()
+        else:
+            self.send_response(404)
+            self.end_headers()
 
 
 if __name__ == "__main__":
